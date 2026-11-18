@@ -1,0 +1,5 @@
+{
+  "name": "stormy-walk",
+  "owner": { "name": "salimsantali" },
+  "plugins": [{ "name": "research-space", "source": "./" }]
+}
