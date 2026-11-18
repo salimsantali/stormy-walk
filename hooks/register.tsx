@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, Register, ThemeSetArgs } from 'claude-code'
+import type { Register, ThemeSetArgs } from 'claude-code'
 
 import { makeColors } from './make-colors.js'
 
@@ -34,7 +34,8 @@ const { theme, problems } = makeColors({
   },
 })
 
-const LOOK: ThemeSetArgs = { colors: theme, backdrop: { scene: 'research-sky' } }
+// No frosting: the panels stay sharp and the cats behind them stay crisp.
+const LOOK: ThemeSetArgs = { colors: theme, backdrop: { scene: 'research-sky', glass: { blur: 0, opacity: 0.45 } } }
 
 // ---------- the background: a quiet starry sky, no cat ----------
 const stars = [
@@ -45,18 +46,7 @@ const stars = [
   .map(([x, y, r, d]) => `<circle class="star" cx="${x}" cy="${y}" r="${r}" style="animation-delay:${d}s"/>`)
   .join('')
 
-const SKY = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
-<style>
-  .s0{stop-color:#e7e0f3}.s1{stop-color:#efe8f2}.s2{stop-color:#f6ecea}
-  .star{fill:#8f7fd0;opacity:.25;animation:tw 4s ease-in-out infinite}
-  @media (prefers-color-scheme: dark){.s0{stop-color:#14112a}.s1{stop-color:#1c1735}.s2{stop-color:#2a1f3d}.star{fill:#fff6d8;opacity:.6}}
-  @keyframes tw{0%,100%{opacity:.15}50%{opacity:.85}}
-  @media (prefers-reduced-motion: reduce){.star{animation:none}}
-</style>
-<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset=".6" class="s1"/><stop offset="1" class="s2"/></linearGradient></defs>
-<rect width="100%" height="100%" fill="url(#sky)"/>
-<svg width="100%" height="100%" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">${stars}</svg>
-</svg>`
+
 
 // ---------- the cats: drawn like the owner's cat ----------
 // Cartoon style from the owner's samples: bold dark ink outlines, flat colour
@@ -121,8 +111,7 @@ const walk = (from: number, to: number, y: number, scale: number, begin: number,
   <g transform="scale(${scale < 0 ? `${scale} ${-scale}` : scale})">${cat}</g>
 </g>`
 
-const CATS = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="40" viewBox="0 0 800 40">
-<style>
+const CAT_STYLE = `
   .lg{transform-box:fill-box;transform-origin:50% 0}
   .lg.a{animation:stepA .42s ease-in-out infinite alternate}
   .lg.b{animation:stepB .42s ease-in-out infinite alternate}
@@ -135,24 +124,49 @@ const CATS = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="40" vi
   @keyframes bob{from{transform:translateY(0)}to{transform:translateY(-1px)}}
   @keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
   @media (prefers-reduced-motion: reduce){.lg,.tail,.bob,.eye{animation:none}}
-</style>
-${walk(-70, 870, 8, 0.74, 0, 36, 0.5)}
-${walk(-70, 870, 15, 0.57, 2.2, 36, 0.5)}
-${walk(870, -70, 10, -0.68, 19, 36, 0.48)}
+`
+
+const CATS = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="40" viewBox="0 0 800 40">
+<style>${CAT_STYLE}</style>
+${walk(-70, 870, 8, 0.74, 0, 22, 0.7)}
+${walk(-70, 870, 15, 0.57, 1.6, 22, 0.7)}
+${walk(870, -70, 10, -0.68, 11, 22, 0.7)}
+</svg>`
+
+// Cats walking down (and one up) the window, behind the chat, from time to time.
+// Each lane is a nested svg whose y slides from above the top to below the bottom.
+const lane = (x: string, down: boolean, scale: number, begin: number, dur: number) => {
+  const turn = down
+    ? `translate(${44 * scale} 0) rotate(90) scale(${scale})`
+    : `translate(0 ${70 * scale}) rotate(-90) scale(${scale})`
+  const ys = down ? '-12%; 112%; 112%' : '112%; -12%; -12%'
+
+  return `<svg x="${x}" y="${down ? '-12%' : '112%'}" width="60" height="60" overflow="visible">
+  <animate attributeName="y" values="${ys}" keyTimes="0; .55; 1" dur="${dur}s" begin="${begin}s" repeatCount="indefinite"/>
+  <g transform="${turn}">${cat}</g>
+</svg>`
+}
+
+const SKY = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+<style>
+  .s0{stop-color:#e7e0f3}.s1{stop-color:#efe8f2}.s2{stop-color:#f6ecea}
+  .star{fill:#8f7fd0;opacity:.25;animation:tw 4s ease-in-out infinite}
+  @media (prefers-color-scheme: dark){.s0{stop-color:#14112a}.s1{stop-color:#1c1735}.s2{stop-color:#2a1f3d}.star{fill:#fff6d8;opacity:.6}}
+  @keyframes tw{0%,100%{opacity:.15}50%{opacity:.85}}
+  @media (prefers-reduced-motion: reduce){.star{animation:none}}
+${CAT_STYLE}</style>
+<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset=".6" class="s1"/><stop offset="1" class="s2"/></linearGradient></defs>
+<rect width="100%" height="100%" fill="url(#sky)"/>
+<svg width="100%" height="100%" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">${stars}</svg>
+${lane('23%', true, 0.62, 0, 40)}
+${lane('76%', true, 0.5, 14, 40)}
+${lane('50%', false, 0.55, 27, 40)}
 </svg>`
 
 const latestRow = atom({ plugin: 'research-space', key: 'latestRow' } as const, null)
 const rowCount = atom({ plugin: 'research-space', key: 'rowCount' } as const, 0)
 
 export const register: Register = on => {
-  // Moves the cats' strip to the end of the conversation, under the newest reply.
-  const placeCats = async ($: EngineInterface) => {
-    const n = (await read($, rowCount)) + 1
-    await update($, rowCount, () => n)
-    await update($, latestRow, () => `cats-${n}`)
-    await $.ui.place({ id: `cats-${n}` })
-  }
-
   on('session.start', async ($, e, next) => {
     const unpainted = problems.find(line => line.startsWith("Desktop won't paint"))
 
@@ -161,16 +175,38 @@ export const register: Register = on => {
     }
 
     const set = await $.theme.set(LOOK)
-    $.ui.status(set.isDrawn ? '🐾 Research Space' : `Research Space (${set.reason})`)
+    $.ui.status(set.isDrawn ? '🐾 Research Space · cats v8' : `Research Space cats v8 (${set.reason})`)
+    $.ui.toast('🐾 The tiny cats are here (v8)')
+
+    // One soft meow as the cats arrive; any failure shows as a toast.
+    $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 })
+      .then(() => $.ui.toast('🐾 meow'))
+      .catch(err => $.ui.toast(`The meow couldn't play: ${String(err)}`))
+
+    // Then a soft meow now and then: every 45 seconds, a 1 in 2 chance.
+    $.clock.every(45000, () => {
+      if (Math.random() < 0.5) {
+        const asset = Math.random() < 0.5 ? 'sounds/meow-1.wav' : 'sounds/meow-2.wav'
+        $.audio.play({ asset }, { gain: 0.6 })
+          .catch(err => $.ui.toast(`The meow couldn't play: ${String(err)}`))
+      }
+    })
     const result = await next(e)
-    await placeCats($)
+    // Moves the cats' strip to the end of the conversation, under the newest reply.
+    const n = (await read($, rowCount)) + 1
+    await update($, rowCount, () => n)
+    await update($, latestRow, () => `cats-${n}`)
+    await $.ui.place({ id: `cats-${n}` })
 
     return result
   })
 
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
-    await placeCats($)
+    const n = (await read($, rowCount)) + 1
+    await update($, rowCount, () => n)
+    await update($, latestRow, () => `cats-${n}`)
+    await $.ui.place({ id: `cats-${n}` })
 
     return result
   })
@@ -197,14 +233,38 @@ export const register: Register = on => {
     const { Box, Svg } = $.ui.resolve(e)
 
     return (
-      <Box position="relative" height={1}>
-        <Box position="absolute" top={-2} left={0} right={0}>
+      <Box position="relative" height={2}>
+        <Box position="absolute" top={-1} left={0} right={0} height={3}>
           <Svg
             source={CATS}
             alt="Three tiny cartoon cats, orange and white like the owner's cat, stroll across the chat"
+            width={720}
+            height={36}
             isInteractive
           />
         </Box>
+      </Box>
+    )
+  })
+
+  // The same cats on a thin strip just above the message box, which the app
+  // always draws in front of the conversation.
+  on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
+    if (e.surface === 'terminal' || e.props.hasSurvey) {
+      return next(e)
+    }
+
+    const { Box, Svg } = $.ui.resolve(e)
+
+    return (
+      <Box>
+        <Svg
+          source={CATS}
+          alt="Three tiny cartoon cats, orange and white like the owner's cat, stroll across the chat"
+          width={720}
+          height={36}
+          isInteractive
+        />
       </Box>
     )
   })
