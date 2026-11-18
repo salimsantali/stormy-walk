@@ -111,6 +111,31 @@ const walk = (from: number, to: number, y: number, scale: number, begin: number,
   <g transform="scale(${scale < 0 ? `${scale} ${-scale}` : scale})">${cat}</g>
 </g>`
 
+// The big bottom cat stops halfway, sniffs the ground, looks up, then walks on.
+// While it walks, the walking pose shows; while it stops, a standing pose
+// (legs still, no bob) takes over and its head dips and lifts.
+const SNIFF_HEAD = `<animateTransform attributeName="transform" type="rotate" dur="22s" repeatCount="indefinite"
+  values="0 44 20; 0 44 20; 24 44 20; 17 44 20; 24 44 20; 17 44 20; 24 44 20; -14 44 20; -14 44 20; 0 44 20; 0 44 20"
+  keyTimes="0; .335; .355; .37; .385; .40; .42; .45; .475; .495; 1"/>`
+
+const standingCat = cat
+  .replace(/ class="lg [ab]"/g, '')
+  .replace('<g class="bob">', '<g>')
+  .replace('<g class="head">', `<g class="head">${SNIFF_HEAD}`)
+
+const sniffWalk = (y: number, scale: number) => `
+<g transform="translate(-70 ${y})">
+  <animateTransform attributeName="transform" type="translate" dur="22s" repeatCount="indefinite"
+    values="-70 ${y}; 420 ${y}; 420 ${y}; 870 ${y}; 870 ${y}" keyTimes="0; .33; .5; .78; 1"/>
+  <animate attributeName="opacity" calcMode="discrete" dur="22s" repeatCount="indefinite" values="1; 0; 1" keyTimes="0; .33; .5"/>
+  <g transform="scale(${scale})">${cat}</g>
+</g>
+<g transform="translate(420 ${y})" opacity="0">
+  <animate attributeName="opacity" calcMode="discrete" dur="22s" repeatCount="indefinite" values="0; 1; 0" keyTimes="0; .33; .5"/>
+  <g transform="scale(${scale})">${standingCat}</g>
+</g>`
+
+
 const CAT_STYLE = `
   .lg{transform-box:fill-box;transform-origin:50% 0}
   .lg.a{animation:stepA .42s ease-in-out infinite alternate}
@@ -128,7 +153,7 @@ const CAT_STYLE = `
 
 const CATS = `<svg xmlns="http://www.w3.org/2000/svg" width="800" height="40" viewBox="0 0 800 40">
 <style>${CAT_STYLE}</style>
-${walk(-70, 870, 8, 0.74, 0, 22, 0.7)}
+${sniffWalk(8, 0.74)}
 ${walk(-70, 870, 15, 0.57, 1.6, 22, 0.7)}
 ${walk(870, -70, 10, -0.68, 11, 22, 0.7)}
 </svg>`
@@ -163,6 +188,13 @@ ${lane('76%', true, 0.5, 14, 40)}
 ${lane('50%', false, 0.55, 27, 40)}
 </svg>`
 
+// ---------- Stormy the desktop pet ----------
+// The pet program (~/Research Space Mods/stormy-pet) reads this file and shows
+// what Claude is doing: idle, working, needs, ready, problem, or quit.
+const PET_DIR = 'Research Space Mods/stormy-pet'
+const petLine = (state: string, text?: string) => JSON.stringify(text === undefined ? { state } : { state, text })
+const PET_START = 'pgrep -f "stormy-pet/bin/stormy-pet" >/dev/null || nohup "$HOME/Research Space Mods/stormy-pet/bin/stormy-pet" >/dev/null 2>&1 &!'
+
 const latestRow = atom({ plugin: 'research-space', key: 'latestRow' } as const, null)
 const rowCount = atom({ plugin: 'research-space', key: 'rowCount' } as const, 0)
 
@@ -174,9 +206,15 @@ export const register: Register = on => {
       $.ui.toast(unpainted)
     }
 
+    // Stormy the desktop pet wakes up with the session.
+    petFile = `${(await $.env.get('HOME')) ?? ''}/${PET_DIR}/state.json`
+    await $.fs.write(petFile, petLine('idle')).catch(() => undefined)
+    $.process.run(['/bin/zsh', '-c', PET_START], { timeoutMs: 10000 }).catch(() => undefined)
+    await $.command.register({ name: 'pet', description: 'Show or hide Stormy, the desktop pet' })
+
     const set = await $.theme.set(LOOK)
-    $.ui.status(set.isDrawn ? '🐾 Research Space · cats v8' : `Research Space cats v8 (${set.reason})`)
-    $.ui.toast('🐾 The tiny cats are here (v8)')
+    $.ui.status(set.isDrawn ? '🐾 Research Space · cats v13' : `Research Space cats v9 (${set.reason})`)
+    $.ui.toast('🐾 The tiny cats are here (v13)')
 
     // One soft meow as the cats arrive; any failure shows as a toast.
     $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 })
@@ -201,8 +239,57 @@ export const register: Register = on => {
     return result
   })
 
+  // Stormy's letter: when a job took a while, she pops up on screen, over any app.
+  let startedAt = 0
+  let asked = ''
+  let petFile = ''
+
+  on('prompt.submit', async ($, e, next) => {
+    startedAt = await $.clock.now()
+    asked = e.text
+
+    if (petFile !== '') {
+      await $.fs.write(petFile, petLine('working', 'Working on it…')).catch(() => undefined)
+    }
+
+    return next(e)
+  })
+
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
+
+    if (petFile !== '') {
+      const line =
+        e.reason === 'answer' ? petLine('ready', 'Done! Click me')
+          : e.reason === 'aborted' ? petLine('idle')
+            : petLine('problem', 'Something went wrong')
+      await $.fs.write(petFile, line).catch(() => undefined)
+    }
+    const took = startedAt === 0 ? 0 : ((await $.clock.now()) - startedAt) / 1000
+
+    if (took >= 20) {
+      const job = asked.replace(/\s+/g, ' ').trim()
+      const short = job.length > 70 ? `${job.slice(0, 70)}…` : job
+      const minutes = took >= 90 ? `${Math.round(took / 60)} min` : `${Math.round(took)} s`
+      $.process
+        .run(
+          [
+            '/bin/zsh',
+            '-c',
+            'exec "$HOME/Research Space Mods/stormy-notify/bin/stormy-notify" "$@"',
+            'stormy-notify',
+            '--title',
+            'Your work is ready',
+            '--message',
+            short === '' ? `Claude finished your job (${minutes}).` : `Done in ${minutes}: “${short}”`,
+            '--open',
+            'com.anthropic.claudefordesktop',
+          ],
+          { timeoutMs: 70000 },
+        )
+        .catch(() => undefined)
+    }
+
     const n = (await read($, rowCount)) + 1
     await update($, rowCount, () => n)
     await update($, latestRow, () => `cats-${n}`)
@@ -267,5 +354,49 @@ export const register: Register = on => {
         />
       </Box>
     )
+  })
+
+  // When Stormy, the research agent, is sent off, the cats notice: a meow and a note.
+  on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
+    if (e.subagent_type === 'stormy') {
+      $.ui.toast('🐾 Stormy is off sniffing around…')
+      $.audio.play({ asset: 'sounds/meow-2.wav' }, { gain: 0.6 }).catch(() => undefined)
+    }
+
+    return next(e)
+  })
+
+  // Waiting on the owner's answer: Stormy raises a paw.
+  on('tool.call', async ($, e, next) => {
+    const waits = e.tool === 'AskUserQuestion' || e.tool === 'ExitPlanMode'
+
+    if (!waits || petFile === '') {
+      return next(e)
+    }
+
+    await $.fs.write(petFile, petLine('needs', 'I need your answer!')).catch(() => undefined)
+    const result = await next(e)
+    await $.fs.write(petFile, petLine('working', 'Working on it…')).catch(() => undefined)
+
+    return result
+  })
+
+  // /pet shows Stormy, or tucks her away if she's already out.
+  on('command.run', { command: 'pet' }, async $ => {
+    const running = await $.process
+      .run(['/usr/bin/pgrep', '-f', 'stormy-pet/bin/stormy-pet'], { timeoutMs: 5000 })
+      .then(r => r.exitCode === 0)
+      .catch(() => false)
+
+    if (running) {
+      await $.fs.write(petFile, petLine('quit')).catch(() => undefined)
+
+      return { text: '🐾 Stormy is tucked away. Type /pet to wake her.' }
+    }
+
+    await $.fs.write(petFile, petLine('idle')).catch(() => undefined)
+    await $.process.run(['/bin/zsh', '-c', PET_START], { timeoutMs: 10000 }).catch(() => undefined)
+
+    return { text: '🐾 Stormy is awake. Drag her anywhere; click her to come back to Claude.' }
   })
 }

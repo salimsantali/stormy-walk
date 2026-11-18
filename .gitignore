@@ -1,0 +1,5 @@
+desktop/*/bin/stormy-pet
+desktop/*/bin/stormy-notify
+desktop/*/state.json
+desktop/*/.pid
+.DS_Store
