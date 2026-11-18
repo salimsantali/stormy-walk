@@ -172,7 +172,7 @@ const lane = (x: string, down: boolean, scale: number, begin: number, dur: numbe
 </svg>`
 }
 
-const SKY = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+const SKY_HEAD = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
 <style>
   .s0{stop-color:#e7e0f3}.s1{stop-color:#efe8f2}.s2{stop-color:#f6ecea}
   .star{fill:#8f7fd0;opacity:.25;animation:tw 4s ease-in-out infinite}
@@ -183,10 +183,15 @@ ${CAT_STYLE}</style>
 <defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="s0"/><stop offset=".6" class="s1"/><stop offset="1" class="s2"/></linearGradient></defs>
 <rect width="100%" height="100%" fill="url(#sky)"/>
 <svg width="100%" height="100%" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">${stars}</svg>
-${lane('23%', true, 0.62, 0, 40)}
+`
+
+const SKY_LANES = `${lane('23%', true, 0.62, 0, 40)}
 ${lane('76%', true, 0.5, 14, 40)}
-${lane('50%', false, 0.55, 27, 40)}
-</svg>`
+${lane('50%', false, 0.55, 27, 40)}`
+
+const SKY = `${SKY_HEAD}${SKY_LANES}</svg>`
+// The same sky with no cats in it, for when the owner hides them.
+const SKY_QUIET = `${SKY_HEAD}</svg>`
 
 // ---------- Stormy the desktop pet ----------
 // The pet program (~/Research Space Mods/stormy-pet) reads this file and shows
@@ -197,6 +202,7 @@ const PET_START = 'pgrep -f "stormy-pet/bin/stormy-pet" >/dev/null || nohup "$HO
 
 const latestRow = atom({ plugin: 'research-space', key: 'latestRow' } as const, null)
 const rowCount = atom({ plugin: 'research-space', key: 'rowCount' } as const, 0)
+const catsHidden = atom({ plugin: 'research-space', key: 'catsHidden' } as const, false)
 
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
@@ -211,10 +217,11 @@ export const register: Register = on => {
     await $.fs.write(petFile, petLine('idle')).catch(() => undefined)
     $.process.run(['/bin/zsh', '-c', PET_START], { timeoutMs: 10000 }).catch(() => undefined)
     await $.command.register({ name: 'pet', description: 'Show or hide Stormy, the desktop pet' })
+    await $.command.register({ name: 'cats', description: 'Show or hide the little cats in the chat' })
 
     const set = await $.theme.set(LOOK)
-    $.ui.status(set.isDrawn ? '🐾 Research Space · cats v13' : `Research Space cats v9 (${set.reason})`)
-    $.ui.toast('🐾 The tiny cats are here (v13)')
+    $.ui.status(set.isDrawn ? '🐾 Research Space · cats v14' : `Research Space cats v9 (${set.reason})`)
+    $.ui.toast('🐾 The tiny cats are here (v14)')
 
     // One soft meow as the cats arrive; any failure shows as a toast.
     $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 })
@@ -222,8 +229,8 @@ export const register: Register = on => {
       .catch(err => $.ui.toast(`The meow couldn't play: ${String(err)}`))
 
     // Then a soft meow now and then: every 45 seconds, a 1 in 2 chance.
-    $.clock.every(45000, () => {
-      if (Math.random() < 0.5) {
+    $.clock.every(45000, async () => {
+      if (Math.random() < 0.5 && !(await read($, catsHidden))) {
         const asset = Math.random() < 0.5 ? 'sounds/meow-1.wav' : 'sounds/meow-2.wav'
         $.audio.play({ asset }, { gain: 0.6 })
           .catch(err => $.ui.toast(`The meow couldn't play: ${String(err)}`))
@@ -298,14 +305,15 @@ export const register: Register = on => {
     return result
   })
 
-  on('ui.render', { component: 'Backdrop' }, ($, e, next) => {
+  on('ui.render', { component: 'Backdrop' }, async ($, e, next) => {
     if (e.props.plugin !== 'research-space' || (e.surface !== 'desktop' && e.surface !== 'mobile')) {
       return next(e)
     }
 
     const { Svg } = $.ui.resolve(e)
+    const hidden = await read($, catsHidden)
 
-    return <Svg source={SKY} alt="A soft starry sky" isInteractive />
+    return <Svg source={hidden ? SKY_QUIET : SKY} alt="A soft starry sky" isInteractive />
   })
 
   on('ui.render', { component: 'Placed' }, async ($, e, next) => {
@@ -313,7 +321,7 @@ export const register: Register = on => {
       return next(e)
     }
 
-    if (e.props.id !== (await read($, latestRow))) {
+    if (e.props.id !== (await read($, latestRow)) || (await read($, catsHidden))) {
       return next(e)
     }
 
@@ -341,17 +349,27 @@ export const register: Register = on => {
       return next(e)
     }
 
-    const { Box, Svg } = $.ui.resolve(e)
+    const { Box, Button, Svg } = $.ui.resolve(e)
+
+    // Hidden: only a small paw button stays, to bring the cats back.
+    if (await read($, catsHidden)) {
+      return (
+        <Box>
+          <Button key="cats-show" label="🐾 Show the cats" plain dimColor onPress={() => update($, catsHidden, () => false)} />
+        </Box>
+      )
+    }
 
     return (
-      <Box>
+      <Box flexDirection="row" alignItems="center">
         <Svg
           source={CATS}
           alt="Three tiny cartoon cats, orange and white like the owner's cat, stroll across the chat"
-          width={720}
-          height={36}
+          width={640}
+          height={32}
           isInteractive
         />
+        <Button key="cats-hide" label="✕ Hide cats" plain dimColor onPress={() => update($, catsHidden, () => true)} />
       </Box>
     )
   })
@@ -398,5 +416,11 @@ export const register: Register = on => {
     await $.process.run(['/bin/zsh', '-c', PET_START], { timeoutMs: 10000 }).catch(() => undefined)
 
     return { text: '🐾 Stormy is awake. Drag her anywhere; click her to come back to Claude.' }
+  })
+
+  on('command.run', { command: 'cats' }, async $ => {
+    const hidden = await update($, catsHidden, now => !now)
+
+    return { text: hidden ? '🐾 The cats are napping out of sight. Type /cats or click “Show the cats” to bring them back.' : '🐾 The cats are back.' }
   })
 }
