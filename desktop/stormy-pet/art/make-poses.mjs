@@ -54,31 +54,27 @@ const envelope = `<g transform="rotate(-7 120 124)">
 <path d="M120 128 c -3 -5 -10 -3 -9 2 c 1 4 9 8 9 8 c 0 0 8 -4 9 -8 c 1 -5 -6 -7 -9 -2 z" fill="#e8506a" ${ink(1.6)}/></g>
 <path d="M100 104 q 10 8 20 2 q 10 6 20 -2" fill="${WH}" ${ink(2.4)}/>
 <path d="M112 108 l2 5 l2 -4 M124 109 l2 4 l2 -5" fill="#fff" stroke="${INK}" stroke-width="1.2" stroke-linejoin="round"/>`
-// A tiny laptop beside Stormy, facing you, so its screen and keyboard both show.
-// Stormy sits behind it to the right and types with one paw: "working".
+// Just a keyboard in front of Stormy (no screen), an old-style white one, with both paws on the keys: "working".
 const keys = (() => {
   let k = ''
-  const rows = [[196.5, 17.5, 109], [202, 14.5, 112], [207.5, 11.5, 115]]
-  for (const [y, x0, x1] of rows) {
-    const n = 9, w = (x1 - x0 - (n - 1) * 2.2) / n
-    for (let i = 0; i < n; i++) k += `<rect x="${(x0 + i * (w + 2.2)).toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="3.8" rx="1" fill="#e4def5"/>`
+  const rows = [[193, 64, 176, 11], [199.5, 60, 180, 12], [206, 56, 184, 12]]
+  for (const [y, x0, x1, n] of rows) {
+    const w = (x1 - x0 - (n - 1) * 2.4) / n
+    for (let i = 0; i < n; i++) k += `<rect x="${(x0 + i * (w + 2.4)).toFixed(1)}" y="${y}" width="${w.toFixed(1)}" height="4.6" rx="1.2" fill="#ffffff" stroke="#b9b1a4" stroke-width=".8"/>`
   }
-  return k + `<rect x="38" y="212" width="50" height="2.6" rx="1" fill="#e4def5"/>`
+  return k + `<rect x="92" y="212.5" width="56" height="3.6" rx="1.2" fill="#ffffff" stroke="#b9b1a4" stroke-width=".8"/>`
 })()
-const laptop = `<path d="M26 136 L100 136 L105 192 L21 192 Z" fill="#3b3256" ${ink(3.2)}/>
-<path d="M32 142 L94 142 L98 186 L28 186 Z" fill="#efeaff"/>
-<rect x="36" y="149" width="34" height="4" rx="2" fill="#6b4fd8"/><rect x="36" y="158" width="48" height="4" rx="2" fill="#b9aef0"/>
-<rect x="36" y="167" width="26" height="4" rx="2" fill="#b9aef0"/><rect x="64" y="167" width="3" height="5" fill="#6b4fd8" class="caret"/>
-<rect x="36" y="176" width="40" height="4" rx="2" fill="#b9aef0"/>
-<path d="M16 192 L110 192 L121 215 L5 215 Z" fill="#5b4aa8" ${ink(3.2)}/>
+const laptop = `<path d="M60 186 L180 186 L194 219 L46 219 Z" fill="#efeae0" ${ink(3.2)}/>
+<path d="M50 214 L190 214" stroke="#d6cfc2" stroke-width="2"/>
 ${keys}
-<g transform="rotate(55 106 172)"><rect x="97" y="170" width="19" height="47" rx="9.5" fill="${WH}" ${ink(3.5)}/><path d="M103 212 v4 M110 212 v4" stroke="${INK}" stroke-width="2" stroke-linecap="round"/></g>`
+<ellipse cx="100" cy="196" rx="11.5" ry="7.5" fill="${WH}" ${ink(3)}/><ellipse cx="140" cy="196" rx="11.5" ry="7.5" fill="${WH}" ${ink(3)}/>
+<path d="M96 199 v3 M104 199 v3 M136 199 v3 M144 199 v3" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`
 
 const svg = (inner) => `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">${inner}</svg>`
 const front = (opts) => svg([
   shadow, tail, body,
   opts.laptop ? '' : legL,
-  opts.raised ? legRaised : legR,
+  opts.laptop ? '' : (opts.raised ? legRaised : legR),
   collar, ears(opts.earsBack), head,
   opts.eyes, opts.mouth ?? mouthSmile, opts.extra ?? '',
   opts.laptop ? laptop : '',
@@ -88,7 +84,7 @@ const poses = {
   'idle': front({ eyes: eyesOpen() }),
   'idle-blink': front({ eyes: eyesClosed }),
   'sleep': front({ eyes: eyesClosed, mouth: `<path d="M114 104 q6 4 12 0" ${ink(2)} fill="none"/>` }),
-  'working': front({ eyes: eyesOpen(-4), laptop: true }),
+  'working': front({ eyes: eyesOpen(), laptop: true }),
   'working-blink': front({ eyes: eyesClosed, laptop: true }),
   'needs': front({ eyes: eyesOpen(2), raised: true, mouth: mouthOpen }),
   'needs-blink': front({ eyes: eyesClosed, raised: true, mouth: mouthOpen }),
