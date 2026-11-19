@@ -208,7 +208,7 @@ func apply(_ newState: String, _ text: String?, fromFile: Bool) {
     cat.image = pose(current.pose)
     setBubble(current.bubble, state: state)
     if changed { lastChange = Date() }
-    if changed && fromFile && state == "needs" { _ = meow?.play() }
+    // Sound comes from Claude itself (a meow when the work is done or it needs you), so Stormy stays quiet here.
 }
 
 func readState() {

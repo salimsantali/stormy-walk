@@ -220,22 +220,8 @@ export const register: Register = on => {
     await $.command.register({ name: 'cats', description: 'Show or hide the little cats in the chat' })
 
     const set = await $.theme.set(LOOK)
-    $.ui.status(set.isDrawn ? '🐾 Research Space · cats v14' : `Research Space cats v9 (${set.reason})`)
-    $.ui.toast('🐾 The tiny cats are here (v14)')
+    $.ui.status(set.isDrawn ? '🐾 Research Space' : `Research Space (${set.reason})`)
 
-    // One soft meow as the cats arrive; any failure shows as a toast.
-    $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 })
-      .then(() => $.ui.toast('🐾 meow'))
-      .catch(err => $.ui.toast(`The meow couldn't play: ${String(err)}`))
-
-    // Then a soft meow now and then: every 45 seconds, a 1 in 2 chance.
-    $.clock.every(45000, async () => {
-      if (Math.random() < 0.5 && !(await read($, catsHidden))) {
-        const asset = Math.random() < 0.5 ? 'sounds/meow-1.wav' : 'sounds/meow-2.wav'
-        $.audio.play({ asset }, { gain: 0.6 })
-          .catch(err => $.ui.toast(`The meow couldn't play: ${String(err)}`))
-      }
-    })
     const result = await next(e)
     // Moves the cats' strip to the end of the conversation, under the newest reply.
     const n = (await read($, rowCount)) + 1
@@ -265,6 +251,11 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
 
+    // Stormy only meows as a notification: here, when the work is done.
+    if (e.reason === 'answer') {
+      $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 }).catch(() => undefined)
+    }
+
     if (petFile !== '') {
       const line =
         e.reason === 'answer' ? petLine('ready', 'Done! Click me')
@@ -289,6 +280,7 @@ export const register: Register = on => {
             'Your work is ready',
             '--message',
             short === '' ? `Claude finished your job (${minutes}).` : `Done in ${minutes}: “${short}”`,
+            '--quiet',
             '--open',
             'com.anthropic.claudefordesktop',
           ],
@@ -374,11 +366,10 @@ export const register: Register = on => {
     )
   })
 
-  // When Stormy, the research agent, is sent off, the cats notice: a meow and a note.
+  // When Stormy, the research agent, is sent off: a quiet note (she meows when the work is done).
   on('tool.call', { tool: 'Agent' }, async ($, e, next) => {
     if (e.subagent_type === 'stormy') {
       $.ui.toast('🐾 Stormy is off sniffing around…')
-      $.audio.play({ asset: 'sounds/meow-2.wav' }, { gain: 0.6 }).catch(() => undefined)
     }
 
     return next(e)
@@ -393,6 +384,7 @@ export const register: Register = on => {
     }
 
     await $.fs.write(petFile, petLine('needs', 'I need your answer!')).catch(() => undefined)
+    $.audio.play({ asset: 'sounds/meow-2.wav' }, { gain: 0.6 }).catch(() => undefined)
     const result = await next(e)
     await $.fs.write(petFile, petLine('working', 'Working on it…')).catch(() => undefined)
 
