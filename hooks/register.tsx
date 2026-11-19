@@ -251,11 +251,6 @@ export const register: Register = on => {
   on('turn.complete', async ($, e, next) => {
     const result = await next(e)
 
-    // Stormy only meows as a notification: here, when the work is done.
-    if (e.reason === 'answer') {
-      $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 }).catch(() => undefined)
-    }
-
     if (petFile !== '') {
       const line =
         e.reason === 'answer' ? petLine('ready', 'Done! Click me')
@@ -265,7 +260,10 @@ export const register: Register = on => {
     }
     const took = startedAt === 0 ? 0 : ((await $.clock.now()) - startedAt) / 1000
 
-    if (took >= 20) {
+    // Stormy's notification: her letter card pops up for a finished job, and her meow is its sound.
+    // Quick replies get no card and no sound, so she stays quiet the rest of the time.
+    if (took >= 20 && e.reason === 'answer') {
+      $.audio.play({ asset: 'sounds/meow-1.wav' }, { gain: 0.6 }).catch(() => undefined)
       const job = asked.replace(/\s+/g, ' ').trim()
       const short = job.length > 70 ? `${job.slice(0, 70)}…` : job
       const minutes = took >= 90 ? `${Math.round(took / 60)} min` : `${Math.round(took)} s`

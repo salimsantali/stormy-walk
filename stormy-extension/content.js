@@ -114,11 +114,12 @@
   }
 
   let lastWorkingAt = 0
+  let workStartedAt = 0
   setInterval(() => {
     const now = Date.now()
     if (aiIsWorking()) {
       lastWorkingAt = now
-      if (mood !== 'working') setMood('working')
+      if (mood !== 'working') { setMood('working'); workStartedAt = now }
       return
     }
     if (mood === 'working' && now - lastWorkingAt > 1200) {
@@ -127,7 +128,8 @@
         return
       }
       setMood('ready')
-      meow(1, 0.35) // the only meow: a notification that the reply is done
+      // The meow is a notification: only for a reply that took a while, or when you're on another tab.
+      if (document.hidden || now - workStartedAt >= 20000) meow(1, 0.35)
       if (document.hidden) chrome.runtime.sendMessage({ type: 'stormy-done', site: SITE }).catch?.(() => {})
       return
     }

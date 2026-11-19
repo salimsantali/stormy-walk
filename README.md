@@ -6,13 +6,13 @@ A Claude Code mod that gives a session the Research Space look: a soft lavender 
 
 **The walking cats.** Orange tabbies with white chests and paws, big amber eyes, a pink collar and a little silver bell, drawn in a bold-outline cartoon style. A few walk across a thin strip just above the message box; the big one stops halfway to sniff the ground and look up before walking on. Others walk down (and one up) the window behind the chat. They sit still if your computer is set to reduce motion.
 
-**The meow is a notification.** Stormy meows once when Claude finishes your job and once when Claude needs your answer. Nothing else makes a sound.
+**The meow is a notification.** Stormy meows only when her letter card pops up (a job that took 20 seconds or more) and when Claude needs your answer. The rest of the time she's silent.
 
 **Stormy, the desktop pet (macOS).** She sits on top of your other windows and shows Claude's state: typing on a laptop while Claude works, a paw up when Claude needs your answer, an envelope in her mouth when the work is ready, a worried face when something failed, and a nap when nothing's happening. Drag her anywhere, click her to go back to Claude, or point at her and click the little ✕ to hide her. Type `/pet` to bring her back. In the chat, click "✕ Hide cats" (or type `/cats`) to hide the walking cats, and "🐾 Show the cats" to bring them back.
 
 **Stormy's letter (macOS).** After a job longer than 20 seconds, a card slides in at the top-right corner of the screen, over any app, with Stormy holding an envelope. Click it to open Claude.
 
-**Stormy in your browser: ChatGPT, Gemini and more.** The `stormy-extension` folder is a browser extension for Chrome, Edge, Opera and Brave. On ChatGPT, Gemini, Claude, Perplexity, DeepSeek, Copilot, Mistral and Grok, Stormy sits on the page, types while the AI writes, and says "Done!" with a meow when the reply is finished (with a notification if you're on another tab). The tiny cats walk across the chat there too.
+**Stormy in your browser: ChatGPT, Gemini and more.** The `stormy-extension` folder is a browser extension for Chrome, Edge, Opera and Brave. On ChatGPT, Gemini, Claude, Perplexity, DeepSeek, Copilot, Mistral and Grok, Stormy sits on the page, types while the AI writes, and says "Done!" when the reply is finished, with a meow and a notification only for long replies or when you're on another tab. The tiny cats walk across the chat there too.
 
 ## Install the browser version (ChatGPT, Gemini and more)
 
